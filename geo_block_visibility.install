@@ -1,0 +1,43 @@
+<?php
+/**
+ * Implements hook_uninstall().
+ */
+function geo_block_visibility_uninstall() {
+
+}
+
+/**
+ * Implements hook_schema().
+ */
+function geo_block_visibility_schema() {
+  $schema['geo_block_visibility_country'] = array(
+    'description' => 'Set block visibility based on geolocation.',
+    'fields' => array(
+      'module' => array(
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => true,
+        'description' => "The block's origin module, from {block}.module."
+      ),
+      'delta' => array(
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => true,
+        'description' => "The block's unique delta within module, from {block}.delta."
+      ),
+      'country' => array(
+        'type' => 'varchar',
+        'length' => 12,
+        'not null' => true,
+        'default' => '',
+        'description' => 'Country code, e.g. "ES" or "US".'
+      )
+    ),
+    'primary key' => array('module', 'delta', 'country'),
+    'indexes' => array(
+      'country' => array('country')
+    )
+  );
+
+  return $schema;
+}

@@ -1,0 +1,4 @@
+core = 7.x
+dependencies[] = smart_ip
+description = Control block visibility based on geolocation.
+name = Geo Block Visbility

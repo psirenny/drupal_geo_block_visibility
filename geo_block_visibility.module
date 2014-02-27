@@ -1,0 +1,101 @@
+<?php
+
+/**
+ * Implements hook_form_FORMID_alter().
+ * @see block_add_block_form()
+ */
+function geo_block_visibility_form_block_add_block_form_alter(&$form, &$form_state) {
+  geo_block_visibility_form_block_admin_configure_alter($form, $form_state);
+}
+
+/**
+ * Implements block hook_form_FORM_ID_alter().
+ */
+function geo_block_visibility_form_block_admin_configure_alter(&$form, &$form_state, $form_id) {
+  include_once DRUPAL_ROOT . '/includes/locale.inc';
+
+  $form['geo_block_visibility']['geolocation'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Geolocation'),
+    '#collapsible' => true,
+    '#collapsed' => true,
+    '#group' => 'visibility',
+    '#weight' => 5,
+    '#attached' => array(
+      'js' => array(drupal_get_path('module', 'geo_block_visibility') . '/geo_block_visibility.js'),
+    )
+  );
+
+  $default_value = db_query('SELECT country FROM {geo_block_visibility_country} WHERE module = :module AND delta = :delta', array(
+    ':module' => $form['module']['#value'],
+    ':delta' => $form['delta']['#value'],
+  ))->fetchCol();
+
+  $form['geo_block_visibility']['geolocation']['countries'] = array(
+    '#type' => 'checkboxes',
+    '#title' => t('Show this block for these countries:'),
+    '#default_value' => $default_value,
+    '#options' => country_get_list(),
+    '#description' => t('If no country is selected, block will show regardless of country.')
+  );
+
+  $form['#submit'][] = 'geo_block_visibility_form_block_admin_configure_submit';
+}
+
+/**
+ * Form submit handler for block configuration form.
+ *
+ * @see geo_block_visibility_form_block_admin_configure_alter()
+ */
+function geo_block_visibility_form_block_admin_configure_submit(&$form, &$form_state) {
+  $module = $form_state['values']['module'];
+  $delta = $form_state['values']['delta'];
+
+  db_delete('geo_block_visibility_country')
+    ->condition('module', $module)
+    ->condition('delta', $delta)
+    ->execute();
+
+  $query = db_insert('geo_block_visibility_country')->fields(array('country', 'module', 'delta'));
+  foreach (array_filter($form_state['values']['countries']) as $country) {
+    $query->values(array(
+      'country' => $country,
+      'module' => $module,
+      'delta' => $delta
+    ));
+  }
+  $query->execute();
+}
+
+/**
+ * Implements hook_block_list_alter().
+ */
+function geo_block_visibility_block_list_alter(&$blocks) {
+  global $theme_key;
+  $block_countries = array();
+  $smart_ip_session = smart_ip_session_get('smart_ip');
+  $country = $smart_ip_session['location']['country_code'];
+
+  // create an array of all blocks' countries
+  $rows = db_query('SELECT module, delta, country FROM {geo_block_visibility_country}');
+  foreach ($rows as $row) {
+    $block_countries[$row->module][$row->delta][$row->country] = true;
+  }
+
+  foreach ($blocks as $blockId => $block) {
+    // skip blocks added by contrib modules
+    if (!isset($block->theme)) continue;
+    if (!isset($block->status)) continue;
+    if ($block->theme != $theme_key) continue;
+    if ($block->status != 1) continue;
+
+    // skip if the block did not select a country
+    if (!isset($block_countries[$block->module][$block->delta])) continue;
+
+    // skip if the block selected this country
+    if (isset($block_countries[$block->module][$block->delta][$country])) continue;
+
+    // hide this block
+    unset($blocks[$blockId]);
+  }
+}
