@@ -11,7 +11,7 @@ Click on configuration for a particular block. Navigate to Geolocation under vis
 Dependencies
 ------------
 
-Geo Block Visibility requires the (Smart IP)[https://drupal.org/project/smart_ip] module.
+Geo Block Visibility requires the [Smart IP](https://drupal.org/project/smart_ip) module.
 
 Installation
 ------------
